@@ -4,19 +4,125 @@ import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Script from "next/script";
 
 export default function CheckoutCart() {
   const { cart, getCartTotal, clearCart, removeFromCart } = useCart();
   const [phone, setPhone] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
   const router = useRouter();
 
   const total = getCartTotal();
 
-  const handleInitiateUPI = () => {
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleRazorpayPayment = async () => {
     if (!phone || phone.length < 10) return alert("Please enter a valid 10-digit mobile number.");
-    setShowPayment(true);
+    setIsProcessing(true);
+
+    const res = await loadRazorpay();
+    if (!res) {
+      alert("Razorpay SDK failed to load. Are you online?");
+      setIsProcessing(false);
+      return;
+    }
+
+    const orderPayload = {
+      customer_phone: phone,
+      items: cart,
+      total_amount: total,
+      payment_method: "pending_razorpay",
+      payment_status: "processing",
+      order_status: "new",
+    };
+
+    try {
+      const orderRes = await fetch("/api/razorpay/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: total }),
+      });
+      const orderData = await orderRes.json();
+      
+      if (!orderData.success) {
+        alert("Could not initiate payment. " + orderData.error);
+        setIsProcessing(false);
+        return;
+      }
+
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency,
+        name: "Godavari Ruchulu",
+        description: "Food Stall Order",
+        order_id: orderData.order.id,
+        handler: async function (response) {
+          try {
+            const verifyRes = await fetch("/api/razorpay/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                orderPayload,
+              }),
+            });
+            const verifyData = await verifyRes.json();
+            
+            if (verifyData.success) {
+              clearCart();
+              const finalOrderId = verifyData.orderData?.id || response.razorpay_order_id;
+              
+              if (verifyData.message.includes("database write failed")) {
+                const localOrders = JSON.parse(localStorage.getItem("stall_orders") || "[]");
+                localStorage.setItem(
+                  "stall_orders",
+                  JSON.stringify([{ id: finalOrderId, ...verifyData.orderData }, ...localOrders])
+                );
+              }
+
+              router.push(`/receipt/${finalOrderId}`);
+            } else {
+              alert("Payment verification failed: " + verifyData.message);
+              setIsProcessing(false);
+            }
+          } catch (err) {
+            console.error(err);
+            alert("Error verifying payment.");
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          contact: phone,
+        },
+        theme: {
+          color: "#E23E3E", // Match UI style
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+            alert("Payment was cancelled.");
+          },
+        },
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+    } catch (err) {
+      console.error(err);
+      alert("Error setting up payment");
+      setIsProcessing(false);
+    }
   };
 
   const handleCash = () => {
@@ -32,19 +138,19 @@ export default function CheckoutCart() {
       items: cart,
       total_amount: total,
       payment_method: paymentMethod,
-      payment_status: paymentMethod === 'cash' ? 'pending' : 'processing', // Admin verifies later
-      order_status: 'new',
-      created_at: new Date().toISOString()
+      payment_status: paymentMethod === "cash" ? "pending" : "processing",
+      order_status: "new",
+      created_at: new Date().toISOString(),
     };
 
-    const { data: orderData, error } = await supabase.from('orders').insert([payload]).select().single();
+    const { data: orderData, error } = await supabase.from("orders").insert([payload]).select().single();
 
     if (error) {
       console.warn("Database disconnected, writing to stall_orders cache...");
-      const realOrderId = "ORD-" + Math.floor(100000 + Math.random() * 900000); // Now looks like a real order to the user
+      const realOrderId = "ORD-" + Math.floor(100000 + Math.random() * 900000); 
       
-      const localOrders = JSON.parse(localStorage.getItem('stall_orders') || '[]');
-      localStorage.setItem('stall_orders', JSON.stringify([{ id: realOrderId, ...payload }, ...localOrders]));
+      const localOrders = JSON.parse(localStorage.getItem("stall_orders") || "[]");
+      localStorage.setItem("stall_orders", JSON.stringify([{ id: realOrderId, ...payload }, ...localOrders]));
       
       clearCart();
       router.push(`/receipt/${realOrderId}`);
@@ -57,21 +163,12 @@ export default function CheckoutCart() {
 
   if (cart.length === 0) {
     return (
-      <div className="app-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="app-container" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <h2>Your cart is empty 🍽️</h2>
-        <Link href="/"><button className="btn-secondary" style={{ width: 'auto', padding: '12px 30px' }}>Back to Menu</button></Link>
+        <Link href="/"><button className="btn-secondary" style={{ width: "auto", padding: "12px 30px" }}>Back to Menu</button></Link>
       </div>
     );
   }
-
-  // Generate maximum compatibility UPI Deep Link mapped from total
-  // Adding tid, mode=02 (dynamic QR), and purpose=00 to bypass stringent PhonePe protections
-  const upiId = "8639139872-2@axl";
-  const transactionRef = `TR${Date.now()}`; 
-  const upiUrl = `upi://pay?pa=${upiId}&pn=GodavariRuchulu&mc=5812&tid=${transactionRef}&tr=${transactionRef}&am=${total}&cu=INR&mode=02&purpose=00`;
-  
-  // Use a free Google API equivalent to generate QR from URL securely
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
 
   return (
     <div className="app-container">
@@ -79,29 +176,6 @@ export default function CheckoutCart() {
         <h1>Your Cart 🛒</h1>
         <Link href="/" style={{ color: "var(--primary)", textDecoration: "none", fontWeight: "600" }}>Back</Link>
       </header>
-
-      {/* Payment Gateway Overlay */ }
-      {showPayment && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}>
-          <div style={{ background: "var(--surface)", width: "100%", maxWidth: "400px", padding: "32px", borderRadius: "24px", textAlign: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}>
-            <h2 style={{ color: "var(--primary)", marginBottom: "16px", fontWeight: "800" }}>Complete Payment</h2>
-            <p style={{ color: "var(--text-muted)", marginBottom: "24px", lineHeight: "1.5" }}>Scan the QR code from another device or tap below to open your UPI app to securely pay <strong>₹{total}</strong>.</p>
-            
-            <img src={qrCodeUrl} alt="UPI QR Code" style={{ width: "220px", height: "220px", border: "12px solid white", borderRadius: "20px", marginBottom: "24px", boxShadow: "var(--shadow-md)" }} />
-            
-            <a href={upiUrl} onClick={() => { setTimeout(() => finalizeOrder("upi"), 3000); }} style={{ display: "block", background: "#f8f9fa", color: "var(--text-main)", padding: "16px", borderRadius: "12px", textDecoration: "none", fontWeight: "700", marginBottom: "24px", border: "1px solid #ddd" }}>
-              📱 Deep Link to GPay / PhonePe
-            </a>
-
-            <button className="btn-success" onClick={() => finalizeOrder("upi")} disabled={isProcessing} style={{ width: "100%", padding: "16px", borderRadius: "12px", fontWeight: "bold", marginBottom: "12px", fontSize: "1.1rem" }}>
-              {isProcessing ? "Verifying Transaction..." : "I have completed Payment ✅"}
-            </button>
-            <button className="btn-secondary" onClick={() => setShowPayment(false)} style={{ background: "transparent", color: "var(--text-muted)", width: "100%", border: "none", textDecoration: "underline", fontWeight: "600", cursor: "pointer" }}>
-              Cancel Payment
-            </button>
-          </div>
-        </div>
-      )}
 
       <div style={{ padding: "20px" }}>
         <div style={{ background: "var(--surface)", borderRadius: "var(--radius-lg)", padding: "20px", marginBottom: "24px", boxShadow: "var(--shadow-sm)" }}>
@@ -129,10 +203,10 @@ export default function CheckoutCart() {
         </div>
 
         <h3 style={{ marginBottom: "12px", color: "var(--text-main)" }}>Contact Details</h3>
-        <input type="tel" placeholder="Enter 10-digit Mobile Number" value={phone} onChange={(e) => setPhone(e.target.value)} className="input-field" />
+        <input type="tel" placeholder="Enter 10-digit Mobile Number" value={phone} onChange={(e) => setPhone(e.target.value)} className="input-field" disabled={isProcessing} />
         
-        <button className="btn-primary" onClick={handleInitiateUPI} disabled={isProcessing}>
-          Pay Securely via UPI
+        <button className="btn-primary" onClick={handleRazorpayPayment} disabled={isProcessing}>
+          {isProcessing ? "Processing..." : "Pay Securely with Razorpay"}
         </button>
         <button className="btn-secondary" onClick={handleCash} disabled={isProcessing}>
           Pay by Cash at Stall
