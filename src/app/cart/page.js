@@ -89,7 +89,7 @@ export default function CheckoutCart() {
             
             <img src={qrCodeUrl} alt="UPI QR Code" style={{ width: "220px", height: "220px", border: "12px solid white", borderRadius: "20px", marginBottom: "24px", boxShadow: "var(--shadow-md)" }} />
             
-            <a href={upiUrl} style={{ display: "block", background: "#f8f9fa", color: "var(--text-main)", padding: "16px", borderRadius: "12px", textDecoration: "none", fontWeight: "700", marginBottom: "24px", border: "1px solid #ddd" }}>
+            <a href={upiUrl} onClick={() => { setTimeout(() => finalizeOrder("upi"), 3000); }} style={{ display: "block", background: "#f8f9fa", color: "var(--text-main)", padding: "16px", borderRadius: "12px", textDecoration: "none", fontWeight: "700", marginBottom: "24px", border: "1px solid #ddd" }}>
               📱 Deep Link to GPay / PhonePe
             </a>
 
