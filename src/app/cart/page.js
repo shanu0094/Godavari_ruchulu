@@ -67,7 +67,7 @@ export default function CheckoutCart() {
   // Generate a legitimate-looking UPI Deep Link mapped from total
   // Replace merchant@upi with your literal PhonePe / GPay Merchant ID
   const upiId = "merchant@upi"; 
-  const upiUrl = `upi://pay?pa=${upiId}&pn=FestBites&am=${total}&cu=INR`;
+  const upiUrl = `upi://pay?pa=${upiId}&pn=Godavari%20Ruchulu&am=${total}&cu=INR`;
   
   // Use a free Google API equivalent to generate QR from URL securely
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;

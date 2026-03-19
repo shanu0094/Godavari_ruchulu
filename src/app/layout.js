@@ -2,8 +2,8 @@ import { CartProvider } from "@/context/CartContext";
 import "./globals.css";
 
 export const metadata = {
-  title: "FestBites - QR Food Stall",
-  description: "Order your favorite food directly from your table.",
+  title: "Godavari Ruchulu - QR Food Stall",
+  description: "Order fresh food directly to your table seamlessly.",
 };
 
 export default function RootLayout({ children }) {

@@ -34,12 +34,12 @@ export async function POST(req) {
     });
 
     await transporter.sendMail({
-      from: `"FestBites" <${GMAIL_USER}>`,
+      from: `"Godavari Ruchulu" <${GMAIL_USER}>`,
       to: email,
-      subject: "Your FestBites Login Code",
+      subject: "Your Godavari Ruchulu Login Code",
       html: `
         <div style="font-family: sans-serif; text-align: center; padding: 20px;">
-          <h2 style="color: #E63946;">FestBites Authentication</h2>
+          <h2 style="color: #E63946;">Godavari Ruchulu Authentication</h2>
           <p>Your one-time password is:</p>
           <h1 style="letter-spacing: 5px; color: #1D3557; background: #FAF9F6; display: inline-block; padding: 10px 20px; border-radius: 8px;">${otp}</h1>
           <p style="color: #6C757D; font-size: 12px; margin-top: 20px;">Please do not share this code with anyone.</p>

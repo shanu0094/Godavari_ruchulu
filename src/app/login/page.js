@@ -93,7 +93,7 @@ export default function LoginPage() {
       <div style={{ background: "var(--surface)", width: "100%", maxWidth: "400px", borderRadius: "24px", padding: "32px 24px", boxShadow: "var(--shadow-md)", textAlign: "center" }}>
         
         <div style={{ fontSize: "50px", marginBottom: "16px" }}>{step === "admin-password" ? "👔" : "📧"}</div>
-        <h1 style={{ color: "var(--primary)", fontWeight: "800", marginBottom: "8px" }}>FestBites {step === "admin-password" ? "Admin" : "Login"}</h1>
+        <h1 style={{ color: "var(--primary)", fontWeight: "800", marginBottom: "8px" }}>Godavari Ruchulu {step === "admin-password" ? "Admin" : "Login"}</h1>
         <p style={{ color: "var(--text-muted)", marginBottom: "32px", fontSize: "0.95rem" }}>
           {step === "email" && "Enter your Email address to log in."}
           {step === "customer-otp" && "Enter the 4-digit code sent to your email."}
