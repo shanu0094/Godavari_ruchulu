@@ -65,8 +65,8 @@ export default function CheckoutCart() {
   }
 
   // Generate a legitimate-looking UPI Deep Link mapped from total
-  // Replace merchant@upi with your literal PhonePe / GPay Merchant ID
-  const upiId = "merchant@upi"; 
+  // Using the verified PhonePe Merchant ID
+  const upiId = "8639139872-2@axl"; 
   const upiUrl = `upi://pay?pa=${upiId}&pn=Godavari%20Ruchulu&am=${total}&cu=INR`;
   
   // Use a free Google API equivalent to generate QR from URL securely
