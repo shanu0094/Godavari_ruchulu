@@ -1,0 +1,54 @@
+"use client";
+import { createContext, useContext, useState, useEffect } from "react";
+
+const CartContext = createContext();
+
+export function CartProvider({ children }) {
+  const [cart, setCart] = useState([]);
+
+  // Load from local storage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("qr-stall-cart");
+    if (saved) {
+      try {
+        setCart(JSON.parse(saved));
+      } catch(e) {}
+    }
+  }, []);
+
+  // Save to local storage on change
+  useEffect(() => {
+    localStorage.setItem("qr-stall-cart", JSON.stringify(cart));
+  }, [cart]);
+
+  const addToCart = (item) => {
+    setCart((prev) => {
+      const exists = prev.find((i) => i.id === item.id);
+      if (exists) {
+        return prev.map((i) =>
+          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+        );
+      }
+      return [...prev, { ...item, quantity: 1 }];
+    });
+  };
+
+  const getCartTotal = () => {
+    return cart.reduce((total, item) => total + item.price * item.quantity, 0);
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    localStorage.removeItem("qr-stall-cart");
+  };
+
+  return (
+    <CartContext.Provider value={{ cart, addToCart, getCartTotal, clearCart }}>
+      {children}
+    </CartContext.Provider>
+  );
+}
+
+export function useCart() {
+  return useContext(CartContext);
+}

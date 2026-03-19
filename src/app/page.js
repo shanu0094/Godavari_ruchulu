@@ -1,66 +1,75 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import { useEffect, useState } from "react";
+import { useCart } from "@/context/CartContext";
+import { supabase } from "@/lib/supabase";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const [menu, setMenu] = useState([]);
+  const { addToCart, cart } = useCart();
+  const router = useRouter();
+
+  const fetchMenu = async () => {
+    const { data } = await supabase.from('menu_items').select('*').eq('is_available', true);
+    if (data && data.length > 0) {
+      setMenu(data);
+    } else {
+      const localMenu = localStorage.getItem('stall_menu');
+      if (localMenu) setMenu(JSON.parse(localMenu).filter(i => i.is_available !== false));
+      else setMenu([]); // Completely empty if nothing added by Admin!
+    }
+  };
+
+  useEffect(() => {
+    fetchMenu();
+
+    // Listen for updates from the Admin Dashboard saving to localStorage
+    const syncTabs = (e) => { if (e.key === 'stall_menu') fetchMenu(); };
+    window.addEventListener('storage', syncTabs);
+
+    return () => window.removeEventListener('storage', syncTabs);
+  }, []);
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.js file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="app-container">
+      <header className="header">
+        <div>
+          <h1>FestBites 🍔</h1>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "4px" }}>Order right to your table.</p>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span className="badge">Table 12</span>
+          <button onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href='/login'; }} style={{ padding: '4px 8px', fontSize: '0.8rem', borderRadius: '8px', border: '1px solid var(--primary)', color: 'var(--primary)', background: 'transparent', cursor: 'pointer', fontWeight: 'bold' }}>Logout</button>
         </div>
-      </main>
+      </header>
+
+      <h2 className="section-title">Live Menu</h2>
+      <div className="menu-grid">
+        {menu.length === 0 ? <p style={{ color: "var(--text-muted)", gridColumn: "1 / -1", textAlign: "center", padding: "40px" }}>Menu is empty. Wait for Admin to add items!</p> :
+          menu.map((item) => (
+            <div key={item.id} className="menu-card">
+              <img src={item.image_url} alt={item.name} className="menu-image" />
+              <div className="menu-details">
+                <h3 className="menu-title">{item.name}</h3>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span className="menu-price">₹{item.price}</span>
+                  <button className="btn-primary" onClick={() => addToCart(item)} style={{ padding: "8px 16px", margin: 0 }}>Add</button>
+                </div>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+
+      {cart.length > 0 && (
+        <div className="cart-float">
+          <span>{cart.reduce((sum, i) => sum + i.quantity, 0)} items | ₹{cart.reduce((sum, i) => sum + (i.price * i.quantity), 0)}</span>
+          <Link href="/cart">
+            <button className="btn-success" style={{ padding: "10px 20px", marginLeft: "16px" }}>Checkout ➔</button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
