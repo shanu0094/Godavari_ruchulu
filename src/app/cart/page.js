@@ -64,10 +64,11 @@ export default function CheckoutCart() {
     );
   }
 
-  // Generate a legitimate-looking UPI Deep Link mapped from total
-  // Using the verified PhonePe Merchant ID
-  const upiId = "8639139872-2@axl"; 
-  const upiUrl = `upi://pay?pa=${upiId}&pn=Godavari%20Ruchulu&am=${total}&cu=INR`;
+  // Generate a strictly compliant UPI Deep Link mapped from total
+  // Using the verified PhonePe Merchant ID along with mandatory MC and TR fields
+  const upiId = "8639139872-2@axl";
+  const transactionRef = `TR${Date.now()}`; 
+  const upiUrl = `upi://pay?pa=${upiId}&pn=Godavari%20Ruchulu&mc=5812&tr=${transactionRef}&am=${total}&cu=INR`;
   
   // Use a free Google API equivalent to generate QR from URL securely
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
