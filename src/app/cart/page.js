@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function CheckoutCart() {
-  const { cart, getCartTotal, clearCart } = useCart();
+  const { cart, getCartTotal, clearCart, removeFromCart } = useCart();
   const [phone, setPhone] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
@@ -105,12 +105,20 @@ export default function CheckoutCart() {
       <div style={{ padding: "20px" }}>
         <div style={{ background: "var(--surface)", borderRadius: "var(--radius-lg)", padding: "20px", marginBottom: "24px", boxShadow: "var(--shadow-sm)" }}>
           {cart.map((item, idx) => (
-            <div key={idx} className="cart-item">
-              <div>
+            <div key={idx} className="cart-item" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ flex: 1 }}>
                 <span className="cart-item-title">{item.name}</span>
                 <div style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "4px" }}>Qty: {item.quantity}</div>
               </div>
-              <span className="cart-item-price">₹{item.price * item.quantity}</span>
+              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                <button 
+                  onClick={() => removeFromCart(item.id)} 
+                  style={{ background: "#ff4d4d", color: "white", border: "none", borderRadius: "50%", width: "26px", height: "26px", fontSize: "1.2rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "2px" }}
+                >
+                  -
+                </button>
+                <span className="cart-item-price" style={{ minWidth: "50px", textAlign: "right" }}>₹{item.price * item.quantity}</span>
+              </div>
             </div>
           ))}
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "20px", paddingTop: "20px", borderTop: "2px dashed #eee", fontSize: "1.4rem", fontWeight: "800" }}>

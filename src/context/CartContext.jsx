@@ -33,6 +33,14 @@ export function CartProvider({ children }) {
     });
   };
 
+  const removeFromCart = (id) => {
+    setCart((prev) => {
+      const exists = prev.find((i) => i.id === id);
+      if (exists && exists.quantity === 1) return prev.filter((i) => i.id !== id);
+      return prev.map((i) => i.id === id ? { ...i, quantity: i.quantity - 1 } : i);
+    });
+  };
+
   const getCartTotal = () => {
     return cart.reduce((total, item) => total + item.price * item.quantity, 0);
   };
@@ -43,7 +51,7 @@ export function CartProvider({ children }) {
   };
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, getCartTotal, clearCart }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, getCartTotal, clearCart }}>
       {children}
     </CartContext.Provider>
   );
